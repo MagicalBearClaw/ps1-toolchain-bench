@@ -1,0 +1,15 @@
+# Copy to tools.toml (ignored by git) and set the paths for this machine.
+# docs/tools.md says how the tools were installed.
+
+[gcc]
+# Prefix of the nugget GCC 16.2 binaries: <prefix>gcc, <prefix>objcopy.
+prefix = "G:/git/ps1-tools/mips-gcc-16.2.0/bin/mipsel-none-elf-"
+
+[pcsx-redux]
+exe = "G:/git/ps1-tools/pcsx-redux-31613/pcsx-redux.exe"
+bios = "G:/git/ps1-tools/pcsx-redux-31613/openbios.bin"
+
+[clang]
+# The PS1 LLVM fork's bin directory. Not used until MIC-31 wires in the
+# clang pipeline; until then clang variants are skipped.
+bin = "G:/git/llvm-project-ps1-mips/build/bin"

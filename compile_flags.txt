@@ -1,0 +1,5 @@
+--target=mipsel-none-elf
+-march=mips1
+-ffreestanding
+-Iinclude
+-Ithird_party/nugget

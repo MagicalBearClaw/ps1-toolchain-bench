@@ -1,0 +1,3 @@
+# Bare assembly: its own _start, BIOS putchar, pcsx_exit(42). No crt0.
+runtime = "none"
+exit_code = 42
