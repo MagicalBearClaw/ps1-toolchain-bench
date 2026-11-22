@@ -1,0 +1,4 @@
+# Old-value read in a .set noreorder load delay slot, and the same pair padded
+# in reorder mode (MIC-21). Bare assembly: its own _start, no crt0.
+runtime = "none"
+exit_code = 679
