@@ -1,4 +1,4 @@
-"""Command line: bench run / bench list."""
+"""Command line: bench run / bench list / bench runtime."""
 
 import argparse
 import datetime
@@ -10,6 +10,7 @@ from .build import BuildError, Clang, Gcc, Unavailable
 from .compare import Variant, check_variant, compare_pair
 from .config import DEFAULT_OPTS, ROOT, ConfigError, discover_tests, load_test, load_tools
 from .elfinfo import section_sizes
+from .runtime import check_parity
 
 
 def _build_and_run(toolchain, spec, opt, tools) -> Variant:
@@ -70,6 +71,17 @@ def _select(names: list[str]) -> list[Path]:
     return chosen
 
 
+def _runtime(tools) -> int:
+    if tools.clang_bin is None:
+        raise ConfigError("bench runtime needs [clang] bin in tools.toml")
+    results = check_parity(tools, ROOT / "build" / "runtime")
+    for r in results:
+        print(f"{'SAME' if r.same else 'DIFF'}  {r.source}  ({r.report})")
+    differ = sum(not r.same for r in results)
+    print(f"\n{len(results) - differ} same, {differ} different.")
+    return 1 if differ else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="bench", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -83,6 +95,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--report-dir", type=Path)
     r.add_argument("--enforce-thresholds", action="store_true",
                    help="fail tests whose size or cycles are over threshold")
+    rt = sub.add_parser("runtime", help="check that clang assembles runtime/ the way gas does")
+    rt.add_argument("--tools", type=Path, default=ROOT / "tools.toml")
     args = p.parse_args(argv)
 
     try:
@@ -90,6 +104,8 @@ def main(argv: list[str] | None = None) -> int:
             for t in discover_tests():
                 print(t.relative_to(ROOT).as_posix())
             return 0
+        if args.cmd == "runtime":
+            return _runtime(load_tools(args.tools))
 
         tools = load_tools(args.tools)
         specs = [load_test(t) for t in _select(args.tests)]

@@ -18,6 +18,7 @@ python -I bench.py run                      # every test, at -Os and -O2
 python -I bench.py run micro                # a whole tier
 python -I bench.py run micro/hello --opt O2
 python -I bench.py run --enforce-thresholds # also fail on size or cycle growth
+python -I bench.py runtime                  # clang vs gas on the runtime's assembly
 ```
 
 - `run` prints PASS or FAIL for each test and exits with 1 if any test failed.
@@ -52,7 +53,7 @@ An `expected.txt` next to it holds the exact expected stdout. C tests include `b
 
 ## What is measured
 
-- **Build.** The GCC variant uses nugget's `common.mk` flags, crt0, `printf` and `ps-exe.ld`.
+- **Build.** The GCC variant uses nugget's `common.mk` flags. It links the crt0, `printf` and `ps-exe.ld` in [runtime/](runtime/README.md), which are nugget's files copied unchanged with their MIT licence. The clang variant will link the same files (MIC-31).
 - **Size.** Sizes come from the ELF:
   - text is the executable sections;
   - data is the other loaded sections;

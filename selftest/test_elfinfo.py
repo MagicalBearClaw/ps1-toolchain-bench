@@ -12,19 +12,20 @@ SHF_WRITE, SHF_ALLOC, SHF_EXECINSTR = 1, 2, 4
 def make_elf(sections):
     """A minimal little-endian ELF32.
 
-    sections: (name, type, flags, contents), where contents is bytes, or an
-    int size for NOBITS sections.
+    sections: (name, type, flags, contents[, align]), where contents is
+    bytes, or an int size for NOBITS sections. align defaults to 4.
     """
     ehsize, shentsize = 52, 40
     names = b"\0.shstrtab\0"
     headers, data = [], bytearray()
-    for name, sh_type, flags, contents in sections:
+    for name, sh_type, flags, contents, *align in sections:
         name_off = len(names)
         names += name.encode() + b"\0"
+        align = align[0] if align else 4
         if isinstance(contents, int):
-            headers.append((name_off, sh_type, flags, 0, contents))
+            headers.append((name_off, sh_type, flags, 0, contents, align))
         else:
-            headers.append((name_off, sh_type, flags, ehsize + len(data), len(contents)))
+            headers.append((name_off, sh_type, flags, ehsize + len(data), len(contents), align))
             data += contents
     strtab_off = ehsize + len(data)
     data += names
@@ -34,8 +35,8 @@ def make_elf(sections):
     header = ident + struct.pack("<HHIIIIIHHHHHH", 2, 8, 1, 0, 0, shoff, 0,
                                  ehsize, 0, 0, shentsize, shnum, shnum - 1)
     shdrs = struct.pack("<10I", *([0] * 10))
-    for name_off, sh_type, flags, off, size in headers:
-        shdrs += struct.pack("<10I", name_off, sh_type, flags, 0, off, size, 0, 0, 4, 0)
+    for name_off, sh_type, flags, off, size, align in headers:
+        shdrs += struct.pack("<10I", name_off, sh_type, flags, 0, off, size, 0, 0, align, 0)
     shdrs += struct.pack("<10I", 1, SHT_STRTAB, 0, 0, strtab_off, len(names), 0, 0, 1, 0)
     return header + bytes(data) + shdrs
 

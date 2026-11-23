@@ -1,6 +1,7 @@
 """Section sizes of a linked ELF, independent of which toolchain built it."""
 
 import struct
+from dataclasses import dataclass
 from pathlib import Path
 
 SHT_NOBITS = 8
@@ -30,37 +31,51 @@ def _strip_padding(contents: bytes) -> int:
     return len(contents)
 
 
-def section_sizes(path: Path) -> dict[str, int]:
-    """Sum the allocated sections of a little-endian ELF32 file.
+@dataclass
+class Section:
+    name: str
+    type: int
+    flags: int
+    align: int
+    size: int
+    contents: bytes  # empty for NOBITS sections
 
-    text: executable sections. data: other loaded sections (.rodata, .data,
-    .sdata, ...). bss: NOBITS sections (.bss, .sbss).
-    """
+
+def read_sections(path: Path) -> list[Section]:
+    """The sections of a little-endian ELF32 file, null section excluded."""
     raw = Path(path).read_bytes()
-    if raw[:4] != b"\x7fELF" or raw[4] != 1 or raw[5] != 1:
+    if raw[:4] != b"ELF" or raw[4] != 1 or raw[5] != 1:
         raise ValueError(f"{path}: not a little-endian ELF32 file")
     shoff, = struct.unpack_from("<I", raw, 32)
     shentsize, shnum, shstrndx = struct.unpack_from("<HHH", raw, 46)
-    headers = [struct.unpack_from("<6I", raw, shoff + i * shentsize) for i in range(shnum)]
+    headers = [struct.unpack_from("<10I", raw, shoff + i * shentsize) for i in range(shnum)]
     strtab = headers[shstrndx][4]
 
     def name_of(off: int) -> str:
         start = strtab + off
         return raw[start:raw.index(b"\0", start)].decode("ascii", "replace")
 
+    return [Section(name_of(h[0]), h[1], h[2], h[8], h[5],
+                    b"" if h[1] == SHT_NOBITS else raw[h[4]:h[4] + h[5]])
+            for h in headers[1:]]
+
+
+def section_sizes(path: Path) -> dict[str, int]:
+    """Sum the allocated sections of a little-endian ELF32 file.
+
+    text: executable sections. data: other loaded sections (.rodata, .data,
+    .sdata, ...). bss: NOBITS sections (.bss, .sbss).
+    """
     sizes = {"text": 0, "data": 0, "bss": 0}
-    for name_off, sh_type, flags, _, offset, size in headers:
-        if not flags & SHF_ALLOC:
+    for sec in read_sections(path):
+        if not sec.flags & SHF_ALLOC or sec.name == EXE_HEADER_SECTION:
             continue
-        name = name_of(name_off)
-        if name == EXE_HEADER_SECTION:
-            continue
-        if sh_type == SHT_NOBITS:
-            sizes["bss"] += size
-        elif flags & SHF_EXECINSTR:
-            sizes["text"] += size
-        elif name == PAD_SECTION:
-            sizes["data"] += _strip_padding(raw[offset:offset + size])
+        if sec.type == SHT_NOBITS:
+            sizes["bss"] += sec.size
+        elif sec.flags & SHF_EXECINSTR:
+            sizes["text"] += sec.size
+        elif sec.name == PAD_SECTION:
+            sizes["data"] += _strip_padding(sec.contents)
         else:
-            sizes["data"] += size
+            sizes["data"] += sec.size
     return sizes

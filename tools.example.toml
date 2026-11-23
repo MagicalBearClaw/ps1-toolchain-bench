@@ -10,6 +10,6 @@ exe = "G:/git/ps1-tools/pcsx-redux-31613/pcsx-redux.exe"
 bios = "G:/git/ps1-tools/pcsx-redux-31613/openbios.bin"
 
 [clang]
-# The PS1 LLVM fork's bin directory. Not used until MIC-31 wires in the
-# clang pipeline; until then clang variants are skipped.
+# The PS1 LLVM fork's bin directory. `bench runtime` uses it now; `bench run`
+# skips the clang variants until MIC-31 wires in the clang pipeline.
 bin = "G:/git/llvm-project-ps1-mips/build/bin"

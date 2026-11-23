@@ -4,23 +4,20 @@ import subprocess
 from pathlib import Path
 
 from .config import ROOT, TestSpec, Tools
+from .runtime import CRT0, GCC_ARCHFLAGS as ARCHFLAGS, LDSCRIPTS, PRINTF, RUNTIME
 
 NUGGET = ROOT / "third_party" / "nugget"
 INCLUDE = ROOT / "include"
 
-# From nugget's common.mk (ARCHFLAGS and CPPFLAGS), so the GCC variant is built
-# the way nugget projects are.
-ARCHFLAGS = ["-march=mips1", "-mabi=32", "-EL", "-fno-pic", "-mno-shared", "-mno-abicalls",
-             "-mfp32", "-mno-llsc", "-fno-stack-protector", "-nostdlib", "-ffreestanding"]
+# From nugget's common.mk (CPPFLAGS), so the GCC variant is built the way
+# nugget projects are.
 GCC_CFLAGS = ["-ffunction-sections", "-fdata-sections", "-mno-gpopt", "-fomit-frame-pointer",
               "-fno-builtin", "-fno-strict-aliasing", "-Wno-attributes",
               # common.mk probes for this. GCC 16 needs it: without it, volatile
               # loads are folded into the next operation and a 32-bit hardware
               # register read can be narrowed to lhu/lbu.
               "-fno-fuse-ops-with-volatile-access", "-g"]
-NUGGET_RUNTIME = [NUGGET / "common" / "crt0" / "crt0.s",
-                  NUGGET / "common" / "syscalls" / "printf.s"]
-LDSCRIPTS = [NUGGET / "nooverlay.ld", NUGGET / "ps-exe.ld"]
+NUGGET_RUNTIME = [CRT0, PRINTF]
 
 
 class BuildError(Exception):
@@ -60,7 +57,7 @@ class Gcc:
         for i, src in enumerate(sources):
             obj = out / f"{i:02d}-{src.stem}.o"
             if src.suffix == ".s":
-                cmd = [cc, *ARCHFLAGS, f"-I{NUGGET}", "-g", "-c", "-o", str(obj), str(src)]
+                cmd = [cc, *ARCHFLAGS, f"-I{RUNTIME}", f"-I{NUGGET}", "-g", "-c", "-o", str(obj), str(src)]
             else:
                 cmd = [cc, *ARCHFLAGS, *GCC_CFLAGS, opt, f"-I{NUGGET}", f"-I{INCLUDE}",
                        "-c", "-o", str(obj), str(src)]
